@@ -157,8 +157,79 @@ function utils_judge_networks_status() {
   esac
 }
 
+function utils_found_pm() {
+  local package_managers=()
+  local pm
+  export found_pm
+
+  package_managers=("apt" "yum" "dnf" "pacman" "zypper")
+
+  for pm in "${package_managers[@]}"; do
+    if command -v "${pm}" &> /dev/null; then
+      found_pm="${pm}"
+      log_success "找到包管理器：${pm}"
+      break
+    fi
+  done
+
+  if [[ -z "${found_pm}" ]]; then
+    log_warn "未找到常用的包管理器"
+  fi
+}
+
 function utils_judge_dependencies() {
-  :
+  local missing_deps=()
+  local required_tools=()
+  local tool
+
+  required_tools=(
+    "wget"
+    "unzip"
+    "tar"
+    "rsync"
+  )
+
+  log_info "检查所需依赖情况中……"
+
+  for tool in "${required_tools[@]}"; do
+    if ! command -v "${tool}" &> /dev/null; then
+      log_error "缺少依赖工具：${tool}"
+      missing_deps+=("${tool}")
+    fi
+  done
+
+  if [[ ${#missing_deps[@]} -eq 0 ]]; then
+    log_success "所需依赖均已安装"
+  else
+    log_warn "缺少如下依赖：${missing_deps[*]}"
+    echo
+    log_info "将自动安装所需依赖"
+    utils_found_pm
+
+    if [[ -n "${found_pm}" ]]; then
+      case "${found_pm}" in
+        "apt")
+          log_info "如下命令将会被执行 apt update && apt install -y ${missing_deps[*]}"
+          log_info "所需时间较长，请耐心等待……"
+          log_info "执行 apt update 命令中……"
+          if apt update > /dev/null 2>&1; then
+            log_success "软件包列表更新完成"
+          else
+            log_error "软件包列表更新失败，请手动处理"
+            return 1
+          fi
+
+          log_info "执行 apt install -y ${missing_deps[*]} 命令中……"
+          if apt install -y "${missing_deps[*]}" > /dev/null 2>&1; then
+            log_success "依赖安装完成"
+          else
+            log_error "依赖安装失败，请手动安装如下依赖 ${missing_deps[*]}"
+            return 1
+          fi
+        ;;
+      esac
+    fi
+  fi
 }
 
 function utils_show_help() {
