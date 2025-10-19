@@ -18,38 +18,51 @@ readonly TEXT_CYAN='\033[0;36m'
 readonly TEXT_RESET='\033[0m'
 
 # 带时间戳的日志函数
-log::error() {
+function log_error() {
   local timestamp
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
   echo -e "${TEXT_RED}${TEXT_BOLD}[${timestamp}][ERROR]${TEXT_RESET} ${TEXT_RED}$*${TEXT_RESET}" >&2
 }
 
-log::warn() {
+function log_warn() {
   local timestamp
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
   echo -e "${TEXT_YELLOW}[${timestamp}][WARN]${TEXT_RESET} ${TEXT_YELLOW}$*${TEXT_RESET}" >&2
 }
 
-log::info() {
+function log_info() {
   local timestamp
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
   echo -e "${TEXT_BLUE}[${timestamp}][INFO]${TEXT_RESET} $*"
 }
 
-log::success() {
+function log_success() {
   local timestamp
   timestamp=$(date '+%Y-%m-%d %H:%M:%S')
   echo -e "${TEXT_GREEN}${TEXT_BOLD}[${timestamp}][SUCCESS]${TEXT_RESET} ${TEXT_GREEN}$*${TEXT_RESET}"
 }
 
-log::debug() {
+function log_debug() {
   if [[ "${DEBUG:-false}" == "true" ]]; then
     local timestamp
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     echo -e "${TEXT_CYAN}[${timestamp}][DEBUG]${TEXT_RESET} $*" >&2
   fi
 }
-init_script_metadata() {
+
+function util_echo_icon() {
+  echo
+  echo -e "${TEXT_GREEN}╔═╗ ╔═╗ ╔════╗"
+  echo -e " ║   ║  ║     "
+  echo -e " ║   ║  ╠════╣"
+  echo -e " ║   ║       ║"
+  echo -e "╚═╝ ╚═╝ ╚════╝${TEXT_RESET}"
+  echo
+  echo -e "&copy; ApexCore.Tech"
+  echo
+}
+
+function utils_get_scripts_metadata() {
   local script_name="${0##*/}"
   local script_dir=""
   script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -60,8 +73,108 @@ init_script_metadata() {
   readonly script_version
 }
 
+function utils_get_os_metadata() {
+  :
+}
+
+function utils_detect_dns_tool() {
+  if command -v getent &> /dev/null; then
+    echo "getent"
+  elif command -v host &> /dev/null; then
+    echo "host"
+  elif command -v nslookup &> /dev/null; then
+    echo "nslookup"
+  elif command -v dig &> /dev/null; then
+    echo "dig"
+  else
+    echo "ping"
+  fi
+}
+
+function utils_judge_networks_status() {
+  # 测试网络联通使用的域名地址
+  local domain="4r3al.team"
+  local dns_tool
+
+  log_info "检查 DNS 解析服务器情况中……"
+  log_info "检查 DNS 工具中……"
+  dns_tool=$(utils_detect_dns_tool 2>/dev/null)
+  log_info "使用 DNS 工具为：${dns_tool}"
+
+  case ${dns_tool} in
+    "getent")
+      if getent hosts "${domain}" &> /dev/null; then
+        log_info "DNS 解析正常（getent）"
+        return 0
+      else
+        log_error "DNS 解析失败（getent）"
+        return 1
+      fi
+      ;;
+    "host")
+      if host "${domain}" &> /dev/null; then
+        log_info "DNS 解析正常（host）"
+        return 0
+      else
+        log_error "DNS 解析失败（host）"
+        return 1
+      fi
+      ;;
+    "nslookup")
+      if nslookup "${domain}" &> /dev/null; then
+        log_info "DNS 解析正常（nslookup）"
+        return 0
+      else
+        log_error "DNS 解析失败（nslookup）"
+        return 1
+      fi
+      ;;
+    "dig")
+      if dig "${domain}" +short &> /dev/null; then
+        log_info "DNS 解析正常（dig）"
+        return 0
+      else
+        log_error "DNS 解析失败（dig）"
+        return 1
+      fi
+      ;;
+    "ping")
+      if ping -c 1 -W 2 "${domain}" &> /dev/null; then
+        log_info "DNS 解析正常（ping）"
+        return 0
+      else
+        if ping -c 1 -W 2 "114.114.114.114" &> /dev/null; then
+          log_error "DNS 解析失败（ping）"
+        else
+          log_error "网络连接失败"
+        fi
+      fi
+      ;;
+    "*")
+      log_error "无法找到可用的 DNS 检测工具"
+      return 2
+    ;;
+  esac
+}
+
+function utils_judge_dependencies() {
+  :
+}
+
+function utils_show_help() {
+  :
+}
+
+function core_install_docker() {
+  :
+}
+
+function core_install_docker_compose() {
+  :
+}
+
 function main() {
-  init_script_metadata
+  utils_judge_networks_status
 }
 
 main "$@"
