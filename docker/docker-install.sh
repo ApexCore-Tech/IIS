@@ -270,6 +270,9 @@ function utils_judge_dependencies() {
             return 1
           fi
         ;;
+        "*")
+          log_error "无法自动安装所需依赖，请手动处理"
+        ;;
       esac
     fi
   fi
