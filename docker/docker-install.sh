@@ -162,7 +162,7 @@ function utils_found_pm() {
   local pm
   export found_pm
 
-  package_managers=("apt" "yum" "dnf" "pacman" "zypper")
+  package_managers=("apt" "yum" "dnf" "pacman" "zypper" "dnf")
 
   for pm in "${package_managers[@]}"; do
     if command -v "${pm}" &> /dev/null; then
@@ -180,6 +180,8 @@ function utils_found_pm() {
 function utils_judge_dependencies() {
   local missing_deps=()
   local required_tools=()
+  local apt_packages=()
+  local yum_packages=()
   local tool
 
   required_tools=(
@@ -209,7 +211,18 @@ function utils_judge_dependencies() {
     if [[ -n "${found_pm}" ]]; then
       case "${found_pm}" in
         "apt")
-          log_info "如下命令将会被执行 apt update && apt install -y ${missing_deps[*]}"
+          declare -A apt_package_map=(
+            ["wget"]="wget"
+            ["unzip"]="unzip"
+            ["tar"]="tar"
+            ["rsync"]="rsync"
+          )
+
+          for tool in "${missing_deps[@]}"; do
+            apt_packages+=("${apt_package_map[@]}")
+          done
+
+          log_info "如下命令将会被执行 apt update && apt install -y ${apt_packages[*]}"
           log_info "所需时间较长，请耐心等待……"
           log_info "执行 apt update 命令中……"
           if apt update > /dev/null 2>&1; then
@@ -219,11 +232,41 @@ function utils_judge_dependencies() {
             return 1
           fi
 
-          log_info "执行 apt install -y ${missing_deps[*]} 命令中……"
-          if apt install -y "${missing_deps[*]}" > /dev/null 2>&1; then
+          log_info "执行 apt install -y ${apt_packages[*]} 命令中……"
+          if apt install -y "${apt_packages[*]}" > /dev/null 2>&1; then
             log_success "依赖安装完成"
           else
-            log_error "依赖安装失败，请手动安装如下依赖 ${missing_deps[*]}"
+            log_error "依赖安装失败，请手动安装如下依赖 ${apt_packages[*]}"
+            return 1
+          fi
+        ;;
+        "yum" | "dnf")
+          declare -A yum_package_map=(
+            ["wget"]="wget"
+            ["unzip"]="unzip"
+            ["tar"]="tar"
+            ["rsync"]="rsync"
+          )
+
+          for tool in "${missing_deps[@]}"; do
+            yum_packages+=("${yum_package_map[@]}")
+          done
+
+          log_info "如下命令将会被执行 apt update && apt install -y ${yum_packages[*]}"
+          log_info "所需时间较长，请耐心等待……"
+          log_info "执行 apt update 命令中……"
+          if apt update > /dev/null 2>&1; then
+            log_success "软件包列表更新完成"
+          else
+            log_error "软件包列表更新失败，请手动处理"
+            return 1
+          fi
+
+          log_info "执行 apt install -y ${yum_packages[*]} 命令中……"
+          if apt install -y "${yum_packages[*]}" > /dev/null 2>&1; then
+            log_success "依赖安装完成"
+          else
+            log_error "依赖安装失败，请手动安装如下依赖 ${yum_packages[*]}"
             return 1
           fi
         ;;
