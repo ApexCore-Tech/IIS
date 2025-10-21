@@ -50,7 +50,7 @@ function log_debug() {
   fi
 }
 
-function util_echo_icon() {
+function utils_echo_icon() {
   echo
   echo -e "${TEXT_GREEN}╔═╗ ╔═╗ ╔════╗"
   echo -e " ║   ║  ║     "
@@ -291,6 +291,7 @@ function core_install_docker_compose() {
 }
 
 function main() {
+  utils_echo_icon
   utils_judge_networks_status
 }
 
